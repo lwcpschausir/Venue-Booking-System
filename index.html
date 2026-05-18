@@ -6,39 +6,76 @@
   <title>學校訂場系統</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
-    html, body {
-      height: 100%;
-      width: 100%;
-      overflow: hidden;
+    html, body { height: 100%; width: 100%; background: #FBF5EB; font-family: "Noto Sans TC", sans-serif; }
+
+    /* 登入畫面 */
+    #loginScreen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
       background: #FBF5EB;
-      font-family: sans-serif;
+      z-index: 10;
+      padding: 24px;
+      text-align: center;
     }
+    #loginScreen .logo { font-size: 56px; }
+    #loginScreen h1 { font-size: 24px; font-weight: 700; color: #423D33; }
+    #loginScreen p { font-size: 15px; color: #7A715F; max-width: 320px; line-height: 1.6; }
+    .btn-login {
+      background: #F39200;
+      color: #fff;
+      border: none;
+      padding: 14px 36px;
+      border-radius: 10px;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      box-shadow: 0 4px 14px rgba(243,146,0,0.35);
+      transition: all 0.15s;
+    }
+    .btn-login:hover { background: #D67A00; transform: translateY(-1px); }
+    .btn-direct {
+      font-size: 13px;
+      color: #7A715F;
+      text-decoration: underline;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+    .step-hint {
+      font-size: 13px;
+      color: #A89F8C;
+      background: #F4EFE6;
+      border-radius: 8px;
+      padding: 12px 20px;
+      max-width: 340px;
+      line-height: 1.7;
+      text-align: left;
+    }
+    .step-hint b { color: #423D33; }
 
     /* 載入畫面 */
     #loadingScreen {
       position: fixed;
       inset: 0;
       background: #FBF5EB;
-      display: flex;
+      display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       z-index: 10;
       gap: 16px;
     }
-    #loadingScreen h2 {
-      font-size: 22px;
-      color: #423D33;
-      font-weight: 700;
-    }
-    #loadingScreen p {
-      font-size: 14px;
-      color: #7A715F;
-    }
+    #loadingScreen h2 { font-size: 20px; color: #423D33; font-weight: 700; }
+    #loadingScreen p { font-size: 14px; color: #7A715F; }
     .spinner {
-      width: 40px;
-      height: 40px;
+      width: 40px; height: 40px;
       border: 4px solid #FFE9C7;
       border-top-color: #F39200;
       border-radius: 50%;
@@ -48,29 +85,97 @@
 
     /* iframe */
     #appFrame {
-      width: 100%;
-      height: 100%;
-      border: none;
-      display: block;
+      width: 100%; height: 100%;
+      border: none; display: block;
+      opacity: 0; transition: opacity 0.3s;
     }
+    #appFrame.loaded { opacity: 1; }
   </style>
 </head>
 <body>
 
-  <!-- 載入畫面 -->
+  <!-- 步驟 1：登入畫面 -->
+  <div id="loginScreen">
+    <div class="logo">🏫</div>
+    <h1>學校訂場系統</h1>
+    <p>請先用學校 Google 帳號登入，再進入訂場系統。</p>
+
+    <div class="step-hint">
+      <b>使用步驟：</b><br>
+      1️⃣ 點下方按鈕，在新視窗完成登入<br>
+      2️⃣ 登入後回到此頁面<br>
+      3️⃣ 點「進入訂場系統」即可使用
+    </div>
+
+    <a href="https://accounts.google.com" target="_blank" class="btn-login" onclick="showAfterLogin()">
+      🔑 用 Google 帳號登入
+    </a>
+
+    <button class="btn-direct" onclick="directOpen()">
+      或直接在新分頁開啟訂場系統 →
+    </button>
+  </div>
+
+  <!-- 步驟 2：載入畫面 -->
   <div id="loadingScreen">
     <div class="spinner"></div>
     <h2>🏫 學校訂場系統</h2>
     <p>正在載入，請稍候...</p>
   </div>
 
-  <!-- Apps Script iframe -->
-  <iframe
-    id="appFrame"
-    src="https://script.google.com/a/macros/lwcps.edu.hk/s/AKfycbwXGnYYtLsO_v0_eARpRC8GRWHMRbrXYt3_6rCiR2xHD7tBb5cDCzKyXjTpCfNNmZJe/exec"
-    allow="fullscreen"
-    onload="document.getElementById('loadingScreen').style.display='none'">
-  </iframe>
+  <!-- Apps Script iframe（預設不載入） -->
+  <iframe id="appFrame" src="" allow="fullscreen"></iframe>
+
+  <script>
+    const SCRIPT_URL = 'YOUR_SCRIPT_URL'; // ← 換成你的 Apps Script URL
+
+    function showAfterLogin() {
+      // 等用戶在新分頁完成登入後，顯示「進入系統」按鈕
+      setTimeout(() => {
+        document.getElementById('loginScreen').innerHTML = `
+          <div class="logo">✅</div>
+          <h1>登入完成</h1>
+          <p>點下方按鈕進入訂場系統</p>
+          <button class="btn-login" onclick="loadApp()">進入訂場系統</button>
+          <button class="btn-direct" onclick="directOpen()">或直接在新分頁開啟 →</button>
+        `;
+      }, 1500);
+    }
+
+    function loadApp() {
+      // 顯示載入畫面
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('loadingScreen').style.display = 'flex';
+
+      // 載入 iframe
+      const frame = document.getElementById('appFrame');
+      frame.src = SCRIPT_URL;
+      frame.onload = () => {
+        document.getElementById('loadingScreen').style.display = 'none';
+        frame.classList.add('loaded');
+
+        // 若 5 秒後 iframe 仍然空白，提示直接開啟
+        setTimeout(() => {
+          if (!frame.classList.contains('loaded')) directOpen();
+        }, 5000);
+      };
+
+      // 保險：10 秒後若仍在載入，提示直接開啟
+      setTimeout(() => {
+        const ls = document.getElementById('loadingScreen');
+        if (ls.style.display !== 'none') {
+          ls.innerHTML += `
+            <p style="color:#D9534F;margin-top:8px;">載入時間過長，
+            <a href="${SCRIPT_URL}" target="_blank" style="color:#F39200;font-weight:700;">
+            點此直接開啟</a></p>`;
+        }
+      }, 10000);
+    }
+
+    function directOpen() {
+      window.open(SCRIPT_URL, '_blank');
+    }
+  </script>
 
 </body>
 </html>
