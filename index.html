@@ -74,14 +74,19 @@
     @keyframes spin { to { transform:rotate(360deg); } }
 
     /* iframe */
-    #appFrame {
+   #appFrame {
       position: fixed; inset: 0;
       width: 100%; height: 100%;
       border: none; display: block;
       opacity: 0; transition: opacity 0.4s;
       z-index: 0;
+      pointer-events: none; /* ← 加這行，未顯示時不攔截點擊 */
     }
-    #appFrame.visible { opacity: 1; z-index: 5; }
+    #appFrame.visible {
+      opacity: 1;
+      z-index: 5;
+      pointer-events: auto; /* ← 載入後才開啟點擊 */
+    }
   </style>
 </head>
 <body>
