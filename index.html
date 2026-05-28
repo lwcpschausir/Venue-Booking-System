@@ -4,176 +4,239 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>學校訂場系統</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; width: 100%; background: #FBF5EB; font-family: "Noto Sans TC", sans-serif; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; width:100%; background:#FBF5EB; font-family:"Noto Sans TC",sans-serif; overflow:hidden; }
 
-    /* 登入畫面 */
-    #loginScreen {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
+    /* ── 共用畫面容器 ── */
+    .screen {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 20px; padding: 24px; text-align: center;
       background: #FBF5EB;
-      z-index: 10;
-      padding: 24px;
-      text-align: center;
+      transition: opacity 0.3s;
     }
-    #loginScreen .logo { font-size: 56px; }
-    #loginScreen h1 { font-size: 24px; font-weight: 700; color: #423D33; }
-    #loginScreen p { font-size: 15px; color: #7A715F; max-width: 320px; line-height: 1.6; }
-    .btn-login {
-      background: #F39200;
-      color: #fff;
-      border: none;
-      padding: 14px 36px;
-      border-radius: 10px;
-      font-size: 17px;
-      font-weight: 700;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-block;
-      box-shadow: 0 4px 14px rgba(243,146,0,0.35);
-      transition: all 0.15s;
-    }
-    .btn-login:hover { background: #D67A00; transform: translateY(-1px); }
-    .btn-direct {
-      font-size: 13px;
-      color: #7A715F;
-      text-decoration: underline;
-      cursor: pointer;
-      background: none;
-      border: none;
-    }
-    .step-hint {
-      font-size: 13px;
-      color: #A89F8C;
-      background: #F4EFE6;
-      border-radius: 8px;
-      padding: 12px 20px;
-      max-width: 340px;
-      line-height: 1.7;
-      text-align: left;
-    }
-    .step-hint b { color: #423D33; }
+    .screen.hidden { opacity:0; pointer-events:none; }
 
-    /* 載入畫面 */
-    #loadingScreen {
-      position: fixed;
-      inset: 0;
-      background: #FBF5EB;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 10;
-      gap: 16px;
+    .logo { font-size: 64px; line-height: 1; }
+    h1 { font-size: 24px; font-weight: 700; color: #423D33; }
+    .subtitle { font-size: 15px; color: #7A715F; max-width: 320px; line-height: 1.6; }
+
+    /* 主按鈕 */
+    .btn-primary {
+      background: #F39200; color: #fff;
+      border: none; padding: 15px 40px;
+      border-radius: 12px; font-size: 17px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+      box-shadow: 0 4px 16px rgba(243,146,0,0.4);
+      transition: all 0.15s; display: inline-flex;
+      align-items: center; gap: 10px;
     }
-    #loadingScreen h2 { font-size: 20px; color: #423D33; font-weight: 700; }
-    #loadingScreen p { font-size: 14px; color: #7A715F; }
+    .btn-primary:hover { background:#D67A00; transform:translateY(-2px); }
+    .btn-primary:disabled { background:#D4CCBB; cursor:not-allowed; transform:none; box-shadow:none; }
+
+    /* 次要按鈕 */
+    .btn-secondary {
+      background: none; border: none;
+      font-size: 13px; color: #A89F8C;
+      text-decoration: underline; cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-secondary:hover { color: #7A715F; }
+
+    /* 狀態提示框 */
+    .hint-box {
+      background: #F4EFE6; border-radius: 10px;
+      padding: 14px 20px; max-width: 340px;
+      font-size: 13px; color: #5C5447;
+      line-height: 1.7; text-align: left;
+    }
+    .hint-box.error {
+      background: #F8D7D6; color: #8B2825;
+      border: 1px solid #D9534F;
+    }
+    .hint-box.success {
+      background: #DCEFCB; color: #467D20;
+      border: 1px solid #5BA02C;
+    }
+
+    /* 轉圈 */
     .spinner {
-      width: 40px; height: 40px;
+      width: 44px; height: 44px;
       border: 4px solid #FFE9C7;
       border-top-color: #F39200;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin { to { transform:rotate(360deg); } }
 
     /* iframe */
     #appFrame {
+      position: fixed; inset: 0;
       width: 100%; height: 100%;
       border: none; display: block;
-      opacity: 0; transition: opacity 0.3s;
+      opacity: 0; transition: opacity 0.4s;
+      z-index: 0;
     }
-    #appFrame.loaded { opacity: 1; }
+    #appFrame.visible { opacity: 1; z-index: 5; }
   </style>
 </head>
 <body>
 
-  <!-- 步驟 1：登入畫面 -->
-  <div id="loginScreen">
+  <!-- 畫面 A：初始 / 登入按鈕 -->
+  <div class="screen" id="screenLogin">
     <div class="logo">🏫</div>
     <h1>學校訂場系統</h1>
-    <p>請先用學校 Google 帳號登入，再進入訂場系統。</p>
-
-    <div class="step-hint">
-      <b>使用步驟：</b><br>
-      1️⃣ 點下方按鈕，在新視窗完成登入<br>
-      2️⃣ 登入後回到此頁面<br>
-      3️⃣ 點「進入訂場系統」即可使用
-    </div>
-
-    <a href="https://accounts.google.com" target="_blank" class="btn-login" onclick="showAfterLogin()">
+    <p class="subtitle">請用學校 Google 帳號登入後使用。</p>
+    <button class="btn-primary" id="btnLogin" onclick="handleLogin()">
       🔑 用 Google 帳號登入
-    </a>
-
-    <button class="btn-direct" onclick="directOpen()">
-      或直接在新分頁開啟訂場系統 →
     </button>
+    <button class="btn-secondary" onclick="directOpen()">直接在新分頁開啟 →</button>
   </div>
 
-  <!-- 步驟 2：載入畫面 -->
-  <div id="loadingScreen">
+  <!-- 畫面 B：正在檢測中 -->
+  <div class="screen hidden" id="screenChecking">
     <div class="spinner"></div>
-    <h2>🏫 學校訂場系統</h2>
-    <p>正在載入，請稍候...</p>
+    <h1>正在檢測登入狀態</h1>
+    <p class="subtitle">請稍候...</p>
   </div>
 
-  <!-- Apps Script iframe（預設不載入） -->
-  <iframe id="appFrame" src="" allow="fullscreen"></iframe>
+  <!-- 畫面 C：登入成功，載入系統 -->
+  <div class="screen hidden" id="screenLoading">
+    <div class="spinner"></div>
+    <h1>🏫 正在載入訂場系統</h1>
+    <p class="subtitle" id="loadingEmail"></p>
+  </div>
+
+  <!-- 畫面 D：非學校帳號 -->
+  <div class="screen hidden" id="screenWrongAccount">
+    <div class="logo">⚠️</div>
+    <h1>請使用學校帳號</h1>
+    <div class="hint-box error" id="wrongAccountMsg"></div>
+    <button class="btn-primary" onclick="switchAccount()">
+      🔄 切換 Google 帳號
+    </button>
+    <button class="btn-secondary" onclick="directOpen()">直接在新分頁開啟 →</button>
+  </div>
+
+  <!-- Apps Script iframe -->
+  <iframe id="appFrame" src=""></iframe>
 
   <script>
-    const SCRIPT_URL = 'https://script.google.com/a/macros/lwcps.edu.hk/s/AKfycbwXGnYYtLsO_v0_eARpRC8GRWHMRbrXYt3_6rCiR2xHD7tBb5cDCzKyXjTpCfNNmZJe/exec'; // ← 換成你的 Apps Script URL
+    const SCRIPT_URL = 'https://script.google.com/a/macros/lwcps.edu.hk/s/AKfycbwXGnYYtLsO_v0_eARpRC8GRWHMRbrXYt3_6rCiR2xHD7tBb5cDCzKyXjTpCfNNmZJe/exec'; // ← 換成你的 Apps Script /exec URL
+    const SCHOOL_DOMAIN = 'lwcps.edu.hk';  // ← 換成你的學校 domain
 
-    function showAfterLogin() {
-      // 等用戶在新分頁完成登入後，顯示「進入系統」按鈕
-      setTimeout(() => {
-        document.getElementById('loginScreen').innerHTML = `
-          <div class="logo">✅</div>
-          <h1>登入完成</h1>
-          <p>點下方按鈕進入訂場系統</p>
-          <button class="btn-login" onclick="loadApp()">進入訂場系統</button>
-          <button class="btn-direct" onclick="directOpen()">或直接在新分頁開啟 →</button>
-        `;
-      }, 1500);
+    // 頁面載入時自動靜默檢查（不打擾用戶）
+    window.addEventListener('load', () => {
+      silentCheck();
+    });
+
+    // 靜默檢查：背景檢測是否已登入
+    async function silentCheck() {
+      try {
+        const res = await fetch(SCRIPT_URL + '?check=1', {
+          cache: 'no-store',
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.loggedIn && data.isSchool) {
+          // 已用學校帳號登入，直接進入系統
+          loadApp(data.email);
+        }
+        // 未登入或非學校帳號 → 保持登入按鈕畫面，等用戶操作
+      } catch(e) {
+        // 檢測失敗（未登入），保持原畫面
+      }
     }
 
-    function loadApp() {
-      // 顯示載入畫面
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('loadingScreen').style.display = 'flex';
+    // 用戶點擊「用 Google 帳號登入」
+    async function handleLogin() {
+      showScreen('screenChecking');
 
-      // 載入 iframe
+      try {
+        const res = await fetch(SCRIPT_URL + '?check=1', {
+          cache: 'no-store',
+          credentials: 'include'
+        });
+        const data = await res.json();
+
+        if (data.loggedIn && data.isSchool) {
+          // ✅ 已用學校帳號登入
+          loadApp(data.email);
+
+        } else if (data.loggedIn && !data.isSchool) {
+          // ⚠️ 登入了但不是學校帳號
+          showScreen('screenWrongAccount');
+          document.getElementById('wrongAccountMsg').innerHTML =
+            '你目前登入的帳號是：<br><b>' + data.email + '</b><br><br>'
+            + '請切換至 <b>@' + SCHOOL_DOMAIN + '</b> 帳號後再試。';
+
+        } else {
+          // ❌ 未登入，跳去 Google 登入頁
+          redirectToGoogleLogin();
+        }
+
+      } catch(e) {
+        // 無法連線（可能未登入），跳去 Google 登入頁
+        redirectToGoogleLogin();
+      }
+    }
+
+    // 載入系統 iframe
+    function loadApp(email) {
+      showScreen('screenLoading');
+      if (email) {
+        document.getElementById('loadingEmail').textContent = '已驗證：' + email;
+      }
       const frame = document.getElementById('appFrame');
       frame.src = SCRIPT_URL;
       frame.onload = () => {
-        document.getElementById('loadingScreen').style.display = 'none';
-        frame.classList.add('loaded');
-
-        // 若 5 秒後 iframe 仍然空白，提示直接開啟
-        setTimeout(() => {
-          if (!frame.classList.contains('loaded')) directOpen();
-        }, 5000);
+        frame.classList.add('visible');
+        showScreen(null); // 隱藏所有畫面
       };
-
-      // 保險：10 秒後若仍在載入，提示直接開啟
+      // 保險：15 秒後仍未載入則提示
       setTimeout(() => {
-        const ls = document.getElementById('loadingScreen');
-        if (ls.style.display !== 'none') {
-          ls.innerHTML += `
-            <p style="color:#D9534F;margin-top:8px;">載入時間過長，
-            <a href="${SCRIPT_URL}" target="_blank" style="color:#F39200;font-weight:700;">
-            點此直接開啟</a></p>`;
+        if (!frame.classList.contains('visible')) {
+          showScreen('screenLoading');
+          document.getElementById('loadingEmail').innerHTML =
+            '載入時間過長，<a href="' + SCRIPT_URL + '" target="_blank" '
+            + 'style="color:#F39200;font-weight:700;">點此直接開啟</a>';
         }
-      }, 10000);
+      }, 15000);
     }
 
+    // 跳去 Google 登入（帶學校 domain hint）
+    function redirectToGoogleLogin() {
+      const loginUrl = 'https://accounts.google.com/signin/v2/identifier'
+        + '?hd=' + SCHOOL_DOMAIN
+        + '&continue=' + encodeURIComponent(window.location.href)
+        + '&prompt=select_account';
+      window.location.href = loginUrl;
+    }
+
+    // 切換帳號
+    function switchAccount() {
+      const loginUrl = 'https://accounts.google.com/signin/v2/identifier'
+        + '?hd=' + SCHOOL_DOMAIN
+        + '&continue=' + encodeURIComponent(window.location.href)
+        + '&prompt=select_account';
+      window.location.href = loginUrl;
+    }
+
+    // 直接在新分頁開啟
     function directOpen() {
       window.open(SCRIPT_URL, '_blank');
+    }
+
+    // 切換顯示畫面
+    function showScreen(id) {
+      ['screenLogin','screenChecking','screenLoading','screenWrongAccount'].forEach(s => {
+        document.getElementById(s).classList.add('hidden');
+      });
+      if (id) document.getElementById(id).classList.remove('hidden');
     }
   </script>
 
