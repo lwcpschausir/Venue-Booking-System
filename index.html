@@ -10,7 +10,6 @@
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body { height:100%; width:100%; background:#FBF5EB; font-family:"Noto Sans TC",sans-serif; overflow:hidden; }
 
-    /* ── 共用畫面容器 ── */
     .screen {
       position: fixed; inset: 0;
       display: flex; flex-direction: column;
@@ -18,6 +17,7 @@
       gap: 20px; padding: 24px; text-align: center;
       background: #FBF5EB;
       transition: opacity 0.3s;
+      z-index: 10; /* ← 確保畫面在 iframe 之上 */
     }
     .screen.hidden { opacity:0; pointer-events:none; }
 
@@ -25,7 +25,6 @@
     h1 { font-size: 24px; font-weight: 700; color: #423D33; }
     .subtitle { font-size: 15px; color: #7A715F; max-width: 320px; line-height: 1.6; }
 
-    /* 主按鈕 */
     .btn-primary {
       background: #F39200; color: #fff;
       border: none; padding: 15px 40px;
@@ -34,20 +33,20 @@
       box-shadow: 0 4px 16px rgba(243,146,0,0.4);
       transition: all 0.15s; display: inline-flex;
       align-items: center; gap: 10px;
+      position: relative; z-index: 20; /* ← 按鈕額外提升 */
     }
     .btn-primary:hover { background:#D67A00; transform:translateY(-2px); }
     .btn-primary:disabled { background:#D4CCBB; cursor:not-allowed; transform:none; box-shadow:none; }
 
-    /* 次要按鈕 */
     .btn-secondary {
       background: none; border: none;
       font-size: 13px; color: #A89F8C;
       text-decoration: underline; cursor: pointer;
       font-family: inherit;
+      position: relative; z-index: 20;
     }
     .btn-secondary:hover { color: #7A715F; }
 
-    /* 狀態提示框 */
     .hint-box {
       background: #F4EFE6; border-radius: 10px;
       padding: 14px 20px; max-width: 340px;
@@ -58,12 +57,7 @@
       background: #F8D7D6; color: #8B2825;
       border: 1px solid #D9534F;
     }
-    .hint-box.success {
-      background: #DCEFCB; color: #467D20;
-      border: 1px solid #5BA02C;
-    }
 
-    /* 轉圈 */
     .spinner {
       width: 44px; height: 44px;
       border: 4px solid #FFE9C7;
@@ -73,81 +67,74 @@
     }
     @keyframes spin { to { transform:rotate(360deg); } }
 
-    /* iframe */
-   #appFrame {
+    /* iframe ：預設完全停用點擊 */
+    #appFrame {
       position: fixed; inset: 0;
       width: 100%; height: 100%;
-      border: none; display: block;
-      opacity: 0; transition: opacity 0.4s;
+      border: none; display: none;  /* ← 預設 display:none */
+      opacity: 0;
       z-index: 0;
-      pointer-events: none; /* ← 加這行，未顯示時不攔截點擊 */
+      pointer-events: none;
     }
     #appFrame.visible {
+      display: block;  /* ← 載入完成才顯示 */
       opacity: 1;
       z-index: 5;
-      pointer-events: auto; /* ← 載入後才開啟點擊 */
+      pointer-events: auto;
+      transition: opacity 0.4s;
     }
   </style>
 </head>
 <body>
 
-  <!-- 畫面 A：初始 / 登入按鈕 -->
   <div class="screen" id="screenLogin">
     <div class="logo">🏫</div>
     <h1>學校訂場系統</h1>
     <p class="subtitle">請用學校 Google 帳號登入後使用。</p>
-    <button class="btn-primary" id="btnLogin" onclick="handleLogin()">
+    <button class="btn-primary" id="btnLogin" type="button" onclick="handleLogin()">
       🔑 用 Google 帳號登入
     </button>
-    <button class="btn-secondary" onclick="directOpen()">直接在新分頁開啟 →</button>
+    <button class="btn-secondary" type="button" onclick="directOpen()">直接在新分頁開啟 →</button>
   </div>
 
-  <!-- 畫面 B：正在檢測中 -->
   <div class="screen hidden" id="screenChecking">
     <div class="spinner"></div>
     <h1>正在檢測登入狀態</h1>
     <p class="subtitle">請稍候...</p>
   </div>
 
-  <!-- 畫面 C：登入成功，載入系統 -->
   <div class="screen hidden" id="screenLoading">
     <div class="spinner"></div>
     <h1>🏫 正在載入訂場系統</h1>
     <p class="subtitle" id="loadingEmail"></p>
   </div>
 
-  <!-- 畫面 D：非學校帳號 -->
   <div class="screen hidden" id="screenWrongAccount">
     <div class="logo">⚠️</div>
     <h1>請使用學校帳號</h1>
     <div class="hint-box error" id="wrongAccountMsg"></div>
-    <button class="btn-primary" onclick="switchAccount()">
+    <button class="btn-primary" type="button" onclick="switchAccount()">
       🔄 切換 Google 帳號
     </button>
-    <button class="btn-secondary" onclick="directOpen()">直接在新分頁開啟 →</button>
+    <button class="btn-secondary" type="button" onclick="directOpen()">直接在新分頁開啟 →</button>
   </div>
 
-  <!-- Apps Script iframe -->
-  <iframe id="appFrame" src=""></iframe>
+  <!-- iframe 預設 display:none，不會攔截點擊 -->
+  <iframe id="appFrame" src="about:blank"></iframe>
 
   <script>
-    const SCRIPT_URL = 'YOUR_SCRIPT_URL'; // ← 換成你的 Apps Script /exec URL
-    const SCHOOL_DOMAIN = 'lwcps.edu.hk';  // ← 換成你的學校 domain
+    const SCRIPT_URL = 'YOUR_SCRIPT_URL';
+    const SCHOOL_DOMAIN = 'lwcps.edu.hk';
 
-    // 修正 Bug 1：XSS 防護，用安全方式設定 innerHTML
     function escapeHtml(str) {
       return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
     }
 
-    // 修正 Bug 2：用 flag 防止 onload 和 timeout 衝突
     let frameLoaded = false;
 
-    // 修正 Bug 6：合併重複的 redirectToGoogleLogin 和 switchAccount
     function redirectToGoogleLogin() {
       const loginUrl = 'https://accounts.google.com/signin/v2/identifier'
         + '?hd=' + SCHOOL_DOMAIN
@@ -156,13 +143,8 @@
       window.location.href = loginUrl;
     }
 
-    function switchAccount() {
-      redirectToGoogleLogin();
-    }
-
-    function directOpen() {
-      window.open(SCRIPT_URL, '_blank');
-    }
+    function switchAccount() { redirectToGoogleLogin(); }
+    function directOpen() { window.open(SCRIPT_URL, '_blank'); }
 
     function showScreen(id) {
       ['screenLogin','screenChecking','screenLoading','screenWrongAccount'].forEach(s => {
@@ -171,8 +153,6 @@
       if (id) document.getElementById(id).classList.remove('hidden');
     }
 
-    // 修正 Bug 5：加入 res.ok 檢查
-    // 修正 Bug 3：catch 加入 console.error
     async function checkLoginStatus() {
       const res = await fetch(SCRIPT_URL + '?check=1', {
         cache: 'no-store',
@@ -182,61 +162,46 @@
       return await res.json();
     }
 
-    // 頁面載入時靜默檢查
+    // 自動靜默檢查（不顯示載入畫面）
     window.addEventListener('load', async () => {
       try {
         const data = await checkLoginStatus();
         if (data.loggedIn && data.isSchool) {
           loadApp(data.email);
         }
-        // 未登入或非學校帳號 → 保持登入按鈕畫面
       } catch(e) {
-        console.error('靜默登入檢測失敗：', e);
-        // 保持登入按鈕畫面，等用戶操作
+        console.error('靜默檢測失敗：', e);
       }
     });
 
-    // 用戶點擊「用 Google 帳號登入」
     async function handleLogin() {
       showScreen('screenChecking');
       try {
         const data = await checkLoginStatus();
-
         if (data.loggedIn && data.isSchool) {
-          // ✅ 學校帳號，進入系統
           loadApp(data.email);
-
         } else if (data.loggedIn && !data.isSchool) {
-          // ⚠️ 非學校帳號，修正 Bug 1：用 escapeHtml 防 XSS
           showScreen('screenWrongAccount');
           document.getElementById('wrongAccountMsg').innerHTML =
             '你目前登入的帳號是：<br><b>' + escapeHtml(data.email) + '</b><br><br>'
             + '請切換至 <b>@' + escapeHtml(SCHOOL_DOMAIN) + '</b> 帳號後再試。';
-
         } else {
-          // ❌ 未登入，跳去 Google 登入頁
           redirectToGoogleLogin();
         }
-
       } catch(e) {
         console.error('登入檢測失敗：', e);
-        // 無法連線或 API 錯誤，跳去 Google 登入
         redirectToGoogleLogin();
       }
     }
 
-    // 載入 iframe
     function loadApp(email) {
       showScreen('screenLoading');
-      if (email) {
-        document.getElementById('loadingEmail').textContent = '已驗證：' + email;
-      }
+      if (email) document.getElementById('loadingEmail').textContent = '已驗證：' + email;
 
       const frame = document.getElementById('appFrame');
       frameLoaded = false;
       frame.src = SCRIPT_URL;
 
-      // 修正 Bug 2：用 frameLoaded flag 防止衝突
       frame.onload = () => {
         if (!frameLoaded) {
           frameLoaded = true;
@@ -245,7 +210,6 @@
         }
       };
 
-      // 修正 Bug 4：加入 iframe onerror 處理
       frame.onerror = () => {
         console.error('iframe 載入失敗');
         if (!frameLoaded) {
@@ -257,11 +221,9 @@
         }
       };
 
-      // 修正 Bug 2：timeout 也用 flag 防止 onload 後再觸發
       setTimeout(() => {
         if (!frameLoaded) {
           frameLoaded = true;
-          console.warn('iframe 載入超時');
           showScreen('screenLoading');
           document.getElementById('loadingEmail').innerHTML =
             '載入時間過長，<a href="' + SCRIPT_URL + '" target="_blank" '
@@ -269,7 +231,7 @@
         }
       }, 15000);
     }
-</script>
+  </script>
 
 </body>
 </html>
