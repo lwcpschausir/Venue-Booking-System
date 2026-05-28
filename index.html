@@ -135,15 +135,18 @@
 
     let frameLoaded = false;
 
+    // 未登入 → 直接導向 Apps Script，由它處理 Google 登入
     function redirectToGoogleLogin() {
-      const loginUrl = 'https://accounts.google.com/signin/v2/identifier'
-        + '?hd=' + SCHOOL_DOMAIN
-        + '&continue=' + encodeURIComponent(window.location.href)
-        + '&prompt=select_account';
-      window.location.href = loginUrl;
+      // Apps Script URL 本身是 Google 網域，未登入會自動跳登入頁
+      window.location.href = SCRIPT_URL;
     }
 
-    function switchAccount() { redirectToGoogleLogin(); }
+     // 切換帳號 → 用 Google 的帳號選擇頁，continue 指向 Apps Script（Google 網域，允許）
+    function switchAccount() {
+      const loginUrl = 'https://accounts.google.com/AccountChooser'
+        + '?continue=' + encodeURIComponent(SCRIPT_URL);
+      window.location.href = loginUrl;
+    }
     function directOpen() { window.open(SCRIPT_URL, '_blank'); }
 
     function showScreen(id) {
