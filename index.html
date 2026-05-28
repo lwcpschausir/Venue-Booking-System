@@ -88,14 +88,12 @@
 <body>
 
   <div class="screen" id="screenLogin">
-    <div class="logo">🏫</div>
-    <h1>學校訂場系統</h1>
-    <p class="subtitle">請用學校 Google 帳號登入後使用。</p>
-    <button class="btn-primary" id="btnLogin" type="button" onclick="handleLogin()">
-      🔑 用 Google 帳號登入
-    </button>
-    <button class="btn-secondary" type="button" onclick="directOpen()">直接在新分頁開啟 →</button>
-  </div>
+  <div class="logo">🏫</div>
+  <h1>學校訂場系統</h1>
+  <p class="subtitle">正在準備中，請稍候...</p>
+  <div class="spinner"></div>
+  <button class="btn-secondary" type="button" onclick="directOpen()">如未自動進入，請點此開啟 →</button>
+</div>
 
   <div class="screen hidden" id="screenChecking">
     <div class="spinner"></div>
@@ -165,37 +163,33 @@
       return await res.json();
     }
 
-    // 自動靜默檢查（不顯示載入畫面）
-    window.addEventListener('load', async () => {
-      try {
-        const data = await checkLoginStatus();
-        if (data.loggedIn && data.isSchool) {
-          loadApp(data.email);
-        }
-      } catch(e) {
-        console.error('靜默檢測失敗：', e);
-      }
-    });
+    // 頁面載入時自動檢測並處理
+window.addEventListener('load', async () => {
+  try {
+    const data = await checkLoginStatus();
 
-    async function handleLogin() {
-      showScreen('screenChecking');
-      try {
-        const data = await checkLoginStatus();
-        if (data.loggedIn && data.isSchool) {
-          loadApp(data.email);
-        } else if (data.loggedIn && !data.isSchool) {
-          showScreen('screenWrongAccount');
-          document.getElementById('wrongAccountMsg').innerHTML =
-            '你目前登入的帳號是：<br><b>' + escapeHtml(data.email) + '</b><br><br>'
-            + '請切換至 <b>@' + escapeHtml(SCHOOL_DOMAIN) + '</b> 帳號後再試。';
-        } else {
-          redirectToGoogleLogin();
-        }
-      } catch(e) {
-        console.error('登入檢測失敗：', e);
-        redirectToGoogleLogin();
-      }
+    if (data.loggedIn && data.isSchool) {
+      // ✅ 已用學校帳號登入 → 直接進入系統
+      loadApp(data.email);
+
+    } else if (data.loggedIn && !data.isSchool) {
+      // ⚠️ 登入了但非學校帳號 → 顯示錯誤
+      showScreen('screenWrongAccount');
+      document.getElementById('wrongAccountMsg').innerHTML =
+        '你目前登入的帳號是：<br><b>' + escapeHtml(data.email) + '</b><br><br>'
+        + '請切換至 <b>@' + escapeHtml(SCHOOL_DOMAIN) + '</b> 帳號後再試。';
+
+    } else {
+      // ❌ 未登入 → 自動導向 Apps Script（會觸發 Google 登入）
+      redirectToGoogleLogin();
     }
+
+  } catch(e) {
+    console.error('登入檢測失敗：', e);
+    // 檢測失敗（多數是未登入）→ 自動導向登入
+    redirectToGoogleLogin();
+  }
+});
 
     function loadApp(email) {
       showScreen('screenLoading');
