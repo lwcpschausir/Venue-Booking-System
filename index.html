@@ -2,62 +2,25 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>學校訂場系統</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body { height:100%; width:100%; background:#FBF5EB; font-family:"Noto Sans TC",sans-serif; overflow:hidden; }
-
+    
     .screen {
       position: fixed; inset: 0;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       gap: 20px; padding: 24px; text-align: center;
       background: #FBF5EB;
-      transition: opacity 0.3s;
-      z-index: 10; /* ← 確保畫面在 iframe 之上 */
+      z-index: 10;
     }
-    .screen.hidden { opacity:0; pointer-events:none; }
-
-    .logo { font-size: 64px; line-height: 1; }
+    .screen.hidden { display: none; }
+    
+    .logo { font-size: 64px; }
     h1 { font-size: 24px; font-weight: 700; color: #423D33; }
     .subtitle { font-size: 15px; color: #7A715F; max-width: 320px; line-height: 1.6; }
-
-    .btn-primary {
-      background: #F39200; color: #fff;
-      border: none; padding: 15px 40px;
-      border-radius: 12px; font-size: 17px; font-weight: 700;
-      cursor: pointer; font-family: inherit;
-      box-shadow: 0 4px 16px rgba(243,146,0,0.4);
-      transition: all 0.15s; display: inline-flex;
-      align-items: center; gap: 10px;
-      position: relative; z-index: 20; /* ← 按鈕額外提升 */
-    }
-    .btn-primary:hover { background:#D67A00; transform:translateY(-2px); }
-    .btn-primary:disabled { background:#D4CCBB; cursor:not-allowed; transform:none; box-shadow:none; }
-
-    .btn-secondary {
-      background: none; border: none;
-      font-size: 13px; color: #A89F8C;
-      text-decoration: underline; cursor: pointer;
-      font-family: inherit;
-      position: relative; z-index: 20;
-    }
-    .btn-secondary:hover { color: #7A715F; }
-
-    .hint-box {
-      background: #F4EFE6; border-radius: 10px;
-      padding: 14px 20px; max-width: 340px;
-      font-size: 13px; color: #5C5447;
-      line-height: 1.7; text-align: left;
-    }
-    .hint-box.error {
-      background: #F8D7D6; color: #8B2825;
-      border: 1px solid #D9534F;
-    }
-
     .spinner {
       width: 44px; height: 44px;
       border: 4px solid #FFE9C7;
@@ -66,135 +29,78 @@
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform:rotate(360deg); } }
-
-    /* iframe ：預設完全停用點擊 */
+    
+    .btn-primary {
+      background: #F39200; color: #fff;
+      border: none; padding: 15px 40px;
+      border-radius: 12px; font-size: 17px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+      box-shadow: 0 4px 16px rgba(243,146,0,0.4);
+    }
+    .btn-secondary {
+      background: none; border: none;
+      font-size: 13px; color: #A89F8C;
+      text-decoration: underline; cursor: pointer;
+      font-family: inherit;
+    }
+    
+    /* iframe：載入後才顯示和開啟點擊 */
     #appFrame {
       position: fixed; inset: 0;
       width: 100%; height: 100%;
-      border: none; display: none;  /* ← 預設 display:none */
+      border: none;
+      display: none;
       opacity: 0;
-      z-index: 0;
+      transition: opacity 0.4s;
       pointer-events: none;
     }
     #appFrame.visible {
-      display: block;  /* ← 載入完成才顯示 */
+      display: block;
       opacity: 1;
-      z-index: 5;
       pointer-events: auto;
-      transition: opacity 0.4s;
+      z-index: 5;
     }
   </style>
 </head>
 <body>
 
-  <div class="screen" id="screenLogin">
-  <div class="logo">🏫</div>
-  <h1>學校訂場系統</h1>
-  <p class="subtitle">正在準備中，請稍候...</p>
-  <div class="spinner"></div>
-  <button class="btn-secondary" type="button" onclick="directOpen()">如未自動進入，請點此開啟 →</button>
-</div>
-
-  <div class="screen hidden" id="screenChecking">
+  <!-- 載入中畫面 -->
+  <div class="screen" id="screenLoading">
+    <div class="logo">🏫</div>
+    <h1>學校訂場系統</h1>
+    <p class="subtitle">正在載入...</p>
     <div class="spinner"></div>
-    <h1>正在檢測登入狀態</h1>
-    <p class="subtitle">請稍候...</p>
+    <button class="btn-secondary" onclick="directOpen()">如未自動進入，請點此</button>
   </div>
 
-  <div class="screen hidden" id="screenLoading">
-    <div class="spinner"></div>
-    <h1>🏫 正在載入訂場系統</h1>
-    <p class="subtitle" id="loadingEmail"></p>
+  <!-- 需要登入畫面（iframe 無法顯示時才出現） -->
+  <div class="screen hidden" id="screenNeedLogin">
+    <div class="logo">🔑</div>
+    <h1>請先登入 Google 帳號</h1>
+    <p class="subtitle">請先用學校 Google 帳號登入，然後重新整理此頁。</p>
+    <button class="btn-primary" onclick="openGmail()">📧 開啟 Gmail 登入</button>
+    <button class="btn-secondary" onclick="directOpen()">直接開啟訂場系統 →</button>
   </div>
 
-  <div class="screen hidden" id="screenWrongAccount">
-    <div class="logo">⚠️</div>
-    <h1>請使用學校帳號</h1>
-    <div class="hint-box error" id="wrongAccountMsg"></div>
-    <button class="btn-primary" type="button" onclick="switchAccount()">
-      🔄 切換 Google 帳號
-    </button>
-    <button class="btn-secondary" type="button" onclick="directOpen()">直接在新分頁開啟 →</button>
-  </div>
-
-  <!-- iframe 預設 display:none，不會攔截點擊 -->
+  <!-- iframe 載入 Apps Script -->
   <iframe id="appFrame" src="about:blank"></iframe>
 
   <script>
-    const SCRIPT_URL = 'https://script.google.com/a/macros/lwcps.edu.hk/s/AKfycbwXGnYYtLsO_v0_eARpRC8GRWHMRbrXYt3_6rCiR2xHD7tBb5cDCzKyXjTpCfNNmZJe/exec';
+    const SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL';  // ← 換成你的 Apps Script /exec URL
     const SCHOOL_DOMAIN = 'lwcps.edu.hk';
-
-    function escapeHtml(str) {
-      return String(str)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    }
 
     let frameLoaded = false;
 
-    // 未登入 → 直接導向 Apps Script，由它處理 Google 登入
-    function redirectToGoogleLogin() {
-      // Apps Script URL 本身是 Google 網域，未登入會自動跳登入頁
-      window.location.href = SCRIPT_URL;
+    function directOpen() {
+      window.open(SCRIPT_URL, '_blank');
     }
 
-     // 切換帳號 → 用 Google 的帳號選擇頁，continue 指向 Apps Script（Google 網域，允許）
-    function switchAccount() {
-      const loginUrl = 'https://accounts.google.com/AccountChooser'
-        + '?continue=' + encodeURIComponent(SCRIPT_URL);
-      window.location.href = loginUrl;
-    }
-    function directOpen() { window.open(SCRIPT_URL, '_blank'); }
-
-    function showScreen(id) {
-      ['screenLogin','screenChecking','screenLoading','screenWrongAccount'].forEach(s => {
-        document.getElementById(s).classList.add('hidden');
-      });
-      if (id) document.getElementById(id).classList.remove('hidden');
+    function openGmail() {
+      window.open('https://mail.google.com', '_blank');
     }
 
-    async function checkLoginStatus() {
-      const res = await fetch(SCRIPT_URL + '?check=1', {
-        cache: 'no-store',
-        credentials: 'include'
-      });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return await res.json();
-    }
-
-    // 頁面載入時自動檢測並處理
-window.addEventListener('load', async () => {
-  try {
-    const data = await checkLoginStatus();
-
-    if (data.loggedIn && data.isSchool) {
-      // ✅ 已用學校帳號登入 → 直接進入系統
-      loadApp(data.email);
-
-    } else if (data.loggedIn && !data.isSchool) {
-      // ⚠️ 登入了但非學校帳號 → 顯示錯誤
-      showScreen('screenWrongAccount');
-      document.getElementById('wrongAccountMsg').innerHTML =
-        '你目前登入的帳號是：<br><b>' + escapeHtml(data.email) + '</b><br><br>'
-        + '請切換至 <b>@' + escapeHtml(SCHOOL_DOMAIN) + '</b> 帳號後再試。';
-
-    } else {
-      // ❌ 未登入 → 自動導向 Apps Script（會觸發 Google 登入）
-      redirectToGoogleLogin();
-    }
-
-  } catch(e) {
-    console.error('登入檢測失敗：', e);
-    // 檢測失敗（多數是未登入）→ 自動導向登入
-    redirectToGoogleLogin();
-  }
-});
-
-    function loadApp(email) {
-      showScreen('screenLoading');
-      if (email) document.getElementById('loadingEmail').textContent = '已驗證：' + email;
-
+    // 直接用 iframe 載入 Apps Script
+    function loadApp() {
       const frame = document.getElementById('appFrame');
       frameLoaded = false;
       frame.src = SCRIPT_URL;
@@ -203,31 +109,24 @@ window.addEventListener('load', async () => {
         if (!frameLoaded) {
           frameLoaded = true;
           frame.classList.add('visible');
-          showScreen(null);
+          document.getElementById('screenLoading').classList.add('hidden');
         }
       };
 
-      frame.onerror = () => {
-        console.error('iframe 載入失敗');
-        if (!frameLoaded) {
-          frameLoaded = true;
-          showScreen('screenLoading');
-          document.getElementById('loadingEmail').innerHTML =
-            '載入失敗，<a href="' + SCRIPT_URL + '" target="_blank" '
-            + 'style="color:#F39200;font-weight:700;">點此直接開啟</a>';
-        }
-      };
-
+      // 15 秒超時提示
       setTimeout(() => {
         if (!frameLoaded) {
           frameLoaded = true;
-          showScreen('screenLoading');
-          document.getElementById('loadingEmail').innerHTML =
-            '載入時間過長，<a href="' + SCRIPT_URL + '" target="_blank" '
-            + 'style="color:#F39200;font-weight:700;">點此直接開啟</a>';
+          console.warn('iframe 載入超時');
+          // 顯示需要登入的提示
+          document.getElementById('screenLoading').classList.add('hidden');
+          document.getElementById('screenNeedLogin').classList.remove('hidden');
         }
       }, 15000);
     }
+
+    // 頁面載入時立即開始
+    window.addEventListener('load', loadApp);
   </script>
 
 </body>
